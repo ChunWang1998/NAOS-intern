@@ -20,7 +20,7 @@ chai.use(solidity);
 chai.use(chaiSubset);
 
 const { expect } = chai;
-
+// https://docs.ethers.io/v5/api/contract/contract-factory/
 let FormationFactory: ContractFactory;
 let NUSDFactory: ContractFactory;
 let ERC20MockFactory: ContractFactory;
@@ -31,6 +31,7 @@ let YearnVaultMockFactory: ContractFactory;
 let YearnControllerMockFactory: ContractFactory;
 
 describe("Formation", () => {
+  // https://docs.ethers.io/v5/api/signer/
   let signers: Signer[];
 
   before(async () => {
@@ -60,7 +61,7 @@ describe("Formation", () => {
     
     beforeEach(async () => {
       [deployer, governance, sentinel, ...signers] = signers;
-
+//ERC20MockFactory??as??
       token = (await ERC20MockFactory.connect(deployer).deploy(
         "Mock DAI",
         "DAI",
@@ -190,7 +191,7 @@ describe("Formation", () => {
 
     describe("set governance", () => {
       context("when caller is not current governance", () => {
-        beforeEach(() => (formation = formation.connect(deployer)));
+        beforeEach(() => (formation = formation.connect(deployer)));//not current governance
 
         it("reverts", async () => {
           expect(
@@ -219,7 +220,7 @@ describe("Formation", () => {
       context("when caller is not current governance", () => {
         it("reverts", async () => {
           expect(
-            formation.setTransmuter(await transmuter.getAddress())
+            formation.setTransmuter(await transmuter.getAddress())//還沒connect to governance
           ).revertedWith("Formation: only governance");
         });
       });
@@ -268,7 +269,7 @@ describe("Formation", () => {
         });
       });
     });
-
+//flag
     describe("set peformance fee", () => {
       context("when caller is not current governance", () => {
         beforeEach(() => (formation = formation.connect(deployer)));
