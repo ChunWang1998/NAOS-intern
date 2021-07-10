@@ -14,6 +14,8 @@ import { YearnVaultAdapter } from "../../types/YearnVaultAdapter";
 import { YearnVaultMock } from "../../types/YearnVaultMock";
 import { YearnControllerMock } from "../../types/YearnControllerMock";
 import { min } from "moment";
+// parseEther("1.0");
+// // { BigNumber: "1000000000000000000" }
 const {parseEther, formatEther} = utils;
 
 chai.use(solidity);
@@ -269,10 +271,10 @@ describe("Formation", () => {
         });
       });
     });
-//flag
+
     describe("set peformance fee", () => {
       context("when caller is not current governance", () => {
-        beforeEach(() => (formation = formation.connect(deployer)));
+        beforeEach(() => (formation = formation.connect(deployer)));//還沒connect to governance
 
         it("reverts", async () => {
           expect(formation.setHarvestFee(1)).revertedWith(
@@ -442,7 +444,7 @@ describe("Formation", () => {
 
         context("when adapter token mismatches", () => {
           const tokenAddress = ethers.utils.getAddress(
-            "0xffffffffffffffffffffffffffffffffffffffff"
+            "0xffffffffffffffffffffffffffffffffffffffff"//not the "token" addr
           );
 
           let invalidAdapter: VaultAdapterMock;
@@ -469,7 +471,7 @@ describe("Formation", () => {
           });
 
           it("increments the vault count", async () => {
-            expect(await formation.vaultCount()).equal(2);
+            expect(await formation.vaultCount()).equal(2);//migrate + initialize
           });
 
           it("sets the vaults adapter", async () => {
@@ -478,7 +480,7 @@ describe("Formation", () => {
         });
       });
     });
-
+//flag
     describe("recall funds", () => {
       context("from the active vault", () => {
         let adapter: YearnVaultAdapter;
