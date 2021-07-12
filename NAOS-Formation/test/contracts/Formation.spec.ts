@@ -57,7 +57,7 @@ describe("Formation", () => {
     let deployer: Signer;
     let governance: Signer;
     let sentinel: Signer;
-    let token: Erc20Mock;
+    let token: Erc20Mock;//DAI
     let nUsd: NToken;
     let formation: Formation;
     
@@ -480,7 +480,7 @@ describe("Formation", () => {
         });
       });
     });
-//flag
+
     describe("recall funds", () => {
       context("from the active vault", () => {
         let adapter: YearnVaultAdapter;
@@ -530,7 +530,7 @@ describe("Formation", () => {
         describe("in an emergency", async () => {
           it("anyone can recall funds", async () => {
             await formation.connect(governance).setEmergencyExit(true);
-            await formation.connect(minter).recallAll(0);
+            await formation.connect(minter).recallAll(0);//把全部錢(depositAmt)打回contarct
             expect(await token.connect(governance).balanceOf(formation.address)).equal(depositAmt);
           });
 
@@ -583,7 +583,7 @@ describe("Formation", () => {
         })
       });
     });
-
+//flag
     describe("flush funds", () => {
       let adapter: VaultAdapterMock;
 
