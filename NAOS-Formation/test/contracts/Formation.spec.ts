@@ -650,7 +650,7 @@ describe("Formation", () => {
         });
       });
     });
-//flag
+
     describe("deposit and withdraw tokens", () => {
       let depositAmt = parseEther("5000");
       let mintAmt = parseEther("1000");
@@ -695,17 +695,17 @@ describe("Formation", () => {
         expect(formation.connect(minter).withdraw(overdraft)).revertedWith("ERC20: transfer amount exceeds balance");
       });
 
-      it("reverts when cdp is undercollateralized", async () => {
+      it("reverts when cdp is undercollateralized", async () => {//抵押不足
         await formation.connect(minter).deposit(depositAmt);
-        await formation.connect(minter).mint(mintAmt);
+        await formation.connect(minter).mint(mintAmt);//mint 影響抵押率
         expect(formation.connect(minter).withdraw(depositAmt)).revertedWith("Action blocked: unhealthy collateralization ratio");
       });
       
       it("deposits, mints, repays, and withdraws", async () => {
         let balBefore = await token.balanceOf(await minter.getAddress());
         await formation.connect(minter).deposit(depositAmt);
-        await formation.connect(minter).mint(mintAmt);
-        await formation.connect(minter).repay(0, mintAmt);
+        await formation.connect(minter).mint(mintAmt);//借款
+        await formation.connect(minter).repay(0, mintAmt);//還款
         await formation.connect(minter).withdraw(depositAmt);
         let balAfter = await token.balanceOf(await minter.getAddress());
         expect(balBefore).equal(balAfter);
@@ -717,10 +717,10 @@ describe("Formation", () => {
         await formation.connect(minter).mint(mintAmt);
         await formation.connect(minter).withdraw(withdrawAmt);
         expect(await token.balanceOf(await minter.getAddress())).equal(
-          parseEther("13000")
+          parseEther("13000")//???
         );
       });
-
+//flag
       describe("flushActivator", async () => {
         beforeEach(async () => {
           await token.connect(deployer).approve(formation.address, parseEther("1"));

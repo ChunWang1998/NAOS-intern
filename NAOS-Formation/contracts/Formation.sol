@@ -561,6 +561,7 @@ contract Formation is  ReentrancyGuard {
   /// Claiming credit will take priority over increasing the debt.
   ///
   /// @param _amount the amount of formation tokens to borrow.
+  //我要借_amount,如果我的credit< 我要借的數量,credit 歸0並增加債務,然後去mint要借的token(nUSD)
   function mint(uint256 _amount) external nonReentrant noContractAllowed onLinkCheck expectInitialized {
 
     CDP.Data storage _cdp = _cdps[msg.sender];
