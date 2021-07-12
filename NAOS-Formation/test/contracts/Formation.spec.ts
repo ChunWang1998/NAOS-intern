@@ -583,7 +583,7 @@ describe("Formation", () => {
         })
       });
     });
-//flag
+
     describe("flush funds", () => {
       let adapter: VaultAdapterMock;
 
@@ -603,7 +603,7 @@ describe("Formation", () => {
               token.address
             )) as VaultAdapterMock;
           });
-
+//two beforeeach???
           beforeEach(async () => {
             await token.mint(formation.address, mintAmount);
 
@@ -650,7 +650,7 @@ describe("Formation", () => {
         });
       });
     });
-
+//flag
     describe("deposit and withdraw tokens", () => {
       let depositAmt = parseEther("5000");
       let mintAmt = parseEther("1000");

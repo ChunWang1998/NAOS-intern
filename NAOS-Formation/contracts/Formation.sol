@@ -560,8 +560,6 @@ contract Formation is  ReentrancyGuard {
   ///
   /// Claiming credit will take priority over increasing the debt.
   ///
-  /// This function reverts if the debt is increased and the CDP health check fails.
-  ///
   /// @param _amount the amount of formation tokens to borrow.
   function mint(uint256 _amount) external nonReentrant noContractAllowed onLinkCheck expectInitialized {
 
@@ -581,7 +579,7 @@ contract Formation is  ReentrancyGuard {
     }
 
     xtoken.mint(msg.sender, _amount);
-    if(_amount >= flushActivator) {
+    if(_amount >= flushActivator) {//flushActivator:when movements are bigger than this number flush is activated.
       flushActiveVault();//把錢丟到vault(yearn)
     }
   }
