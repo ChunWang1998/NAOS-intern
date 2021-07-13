@@ -213,7 +213,6 @@ describe("Formation", () => {
 
         it("updates rewards", async () => {
           await formation.setRewards(await rewards.getAddress());
-          console.log(`rewards:${await formation.rewards()}\n`);
           expect(await formation.rewards()).equal(await rewards.getAddress());
         });
       });
@@ -288,7 +287,6 @@ describe("Formation", () => {
         beforeEach(() => (formation = formation.connect(governance)));
 
         it("reverts when performance fee greater than maximum", async () => {
-          console.log(`MAX:${await formation.PERCENT_RESOLUTION()}\n`);
           const MAXIMUM_VALUE = await formation.PERCENT_RESOLUTION();
           expect(formation.setHarvestFee(MAXIMUM_VALUE.add(1))).revertedWith(
             "Formation: harvest fee above maximum"
@@ -318,7 +316,6 @@ describe("Formation", () => {
         beforeEach(() => (formation = formation.connect(governance)));
 
         it("reverts when performance fee less than minimum", async () => {
-          console.log(`min:${await formation.MINIMUM_COLLATERALIZATION_LIMIT()}\n`);
           const MINIMUM_LIMIT = await formation.MINIMUM_COLLATERALIZATION_LIMIT();
           expect(
             formation.setCollateralizationLimit(MINIMUM_LIMIT.sub(1))
@@ -342,7 +339,7 @@ describe("Formation", () => {
       });
     });
   });
-//flag
+
   describe("vault actions", () => {
     let deployer: Signer;
     let governance: Signer;
@@ -402,16 +399,21 @@ describe("Formation", () => {
       )) as Transmuter;
       await formation.connect(governance).setTransmuter(transmuterContract.address);
       await transmuterContract.connect(governance).setWhitelist(formation.address, true);
+      //console.log(`token supply(before mint):${ await token.totalSupply()}`);
       await token.mint(await minter.getAddress(), parseEther("10000"));//???what happen here
+
       await token.connect(minter).approve(formation.address, parseEther("10000"));
+      //console.log(`token supply(after mint):${ await token.totalSupply()}`);
     });
-//flag
+
     describe("migrate", () => {
       beforeEach(async () => {
         adapter = (await VaultAdapterMockFactory.connect(deployer).deploy(
           token.address
         )) as VaultAdapterMock;
 
+        //console.log(`formation vault count(before init):${ await formation.vaultCount()}`);
+        //expect 0
         await formation.connect(governance).initialize(adapter.address);
       });
 
@@ -470,6 +472,9 @@ describe("Formation", () => {
             newAdapter = (await VaultAdapterMockFactory.connect(deployer).deploy(
               token.address
             )) as VaultAdapterMock;
+            
+            //console.log(`formation vault count(before migrate):${ await formation.vaultCount()}`);
+            //expect 1
             await formation.migrate(newAdapter.address);
           });
 
@@ -483,7 +488,7 @@ describe("Formation", () => {
         });
       });
     });
-
+//flag
     describe("recall funds", () => {
       context("from the active vault", () => {
         let adapter: YearnVaultAdapter;
