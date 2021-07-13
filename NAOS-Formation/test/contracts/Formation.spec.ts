@@ -720,7 +720,7 @@ describe("Formation", () => {
           parseEther("13000")//???
         );
       });
-//flag
+
       describe("flushActivator", async () => {
         beforeEach(async () => {
           await token.connect(deployer).approve(formation.address, parseEther("1"));
@@ -731,7 +731,7 @@ describe("Formation", () => {
 
         it("deposit() flushes funds if amount >= flushActivator", async () => {
           let balBeforeWhale = await token.balanceOf(adapter.address);
-          await formation.connect(minter).deposit(parseEther("100000"));
+          await formation.connect(minter).deposit(parseEther("100000"));//觸發flushActiveVault()
           let balAfterWhale = await token.balanceOf(adapter.address);
           expect(balBeforeWhale).equal(0);
           expect(balAfterWhale).equal(parseEther("100001"));
