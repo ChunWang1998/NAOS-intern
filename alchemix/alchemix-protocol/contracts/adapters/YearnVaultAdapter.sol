@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0
-pragma solidity 0.6.12;
+pragma solidity ^0.6.12;
+pragma experimental ABIEncoderV2;
 
 import "hardhat/console.sol";
 
@@ -15,7 +16,7 @@ import {IyVaultV2} from "../interfaces/IyVaultV2.sol";
 ///
 /// @dev A vault adapter implementation which wraps a yEarn vault.
 contract YearnVaultAdapter is IVaultAdapter {
-  using FixedPointMath for FixedPointMath.uq192x64;
+  using FixedPointMath for FixedPointMath.FixedDecimal;
   using SafeERC20 for IDetailedERC20;
   using SafeMath for uint256;
 
@@ -29,8 +30,6 @@ contract YearnVaultAdapter is IVaultAdapter {
   uint256 public decimals;
 
   constructor(IyVaultV2 _vault, address _admin) public {
-    require(address(_vault) != address(0), "YearnVaultAdapter: vault address cannot be 0x0");
-    require(_admin != address(0), "YearnVaultAdapter: admin address cannot be 0x0");
     vault = _vault;
     admin = _admin;
     updateApproval();
@@ -59,10 +58,8 @@ contract YearnVaultAdapter is IVaultAdapter {
 
   /// @dev Deposits tokens into the vault.
   ///
-  /// This function reverts if the caller is not the admin.
-  ///
   /// @param _amount the amount of tokens to deposit into the vault.
-  function deposit(uint256 _amount) external override onlyAdmin {
+  function deposit(uint256 _amount) external override {
     vault.deposit(_amount);
   }
 
@@ -87,9 +84,7 @@ contract YearnVaultAdapter is IVaultAdapter {
   /// @param _sharesAmount the amount of shares.
   ///
   /// @return the number of tokens the shares are worth.
-
-  //vault.pricePerShare()就是yvDAI 的價格
-  //pricepershare利息發進去的時候 他的價格就會上漲(因為vault 中有更多基礎代幣可以在提款時贖回)
+  
   function _sharesToTokens(uint256 _sharesAmount) internal view returns (uint256) {
     return _sharesAmount.mul(vault.pricePerShare()).div(10**decimals);
   }

@@ -1,4 +1,5 @@
 pragma solidity 0.6.12;
+pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/GSN/Context.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
@@ -8,6 +9,41 @@ import "./interfaces/IERC20Burnable.sol";
 
 import "hardhat/console.sol";
 
+//    ___    __        __                _               ___                              __         _ 
+//   / _ |  / / ____  / /  ___   __ _   (_) __ __       / _ \  ____ ___   ___ ___   ___  / /_  ___  (_)
+//  / __ | / / / __/ / _ \/ -_) /  ' \ / /  \ \ /      / ___/ / __// -_) (_-</ -_) / _ \/ __/ (_-< _
+// /_/ |_|/_/  \__/ /_//_/\__/ /_/_/_//_/  /_\_\      /_/    /_/   \__/ /___/\__/ /_//_/\__/ /___/(_)
+//
+// .___________..______           ___      .__   __.      _______..___  ___.  __    __  .___________. _______ .______
+// |           ||   _  \         /   \     |  \ |  |     /       ||   \/   | |  |  |  | |           ||   ____||   _  \
+// `---|  |----`|  |_)  |       /  ^  \    |   \|  |    |   (----`|  \  /  | |  |  |  | `---|  |----`|  |__   |  |_)  |
+//     |  |     |      /       /  /_\  \   |  . `  |     \   \    |  |\/|  | |  |  |  |     |  |     |   __|  |      /
+//     |  |     |  |\  \----. /  _____  \  |  |\   | .----)   |   |  |  |  | |  `--'  |     |  |     |  |____ |  |\  \----.
+//     |__|     | _| `._____|/__/     \__\ |__| \__| |_______/    |__|  |__|  \______/      |__|     |_______|| _| `._____|
+/**
+ * @dev Implementation of the {IERC20Burnable} interface.
+ *
+ * This implementation is agnostic to the way tokens are created. This means
+ * that a supply mechanism has to be added in a derived contract using {_mint}.
+ * For a generic mechanism see {ERC20PresetMinterPauser}.
+ *
+ * TIP: For a detailed writeup see our guide
+ * https://forum.zeppelin.solutions/t/how-to-implement-erc20-supply-mechanisms/226[How
+ * to implement supply mechanisms].
+ *
+ * We have followed general OpenZeppelin guidelines: functions revert instead
+ * of returning `false` on failure. This behavior is nonetheless conventional
+ * and does not conflict with the expectations of ERC20 applications.
+ *
+ * Additionally, an {Approval} event is emitted on calls to {transferFrom}.
+ * This allows applications to reconstruct the allowance for all accounts just
+ * by listening to said events. Other implementations of the EIP may not emit
+ * these events, as it isn't required by the specification.
+ *
+ * Finally, the non-standard {decreaseAllowance} and {increaseAllowance}
+ * functions have been added to mitigate the well-known issues around setting
+ * allowances. See {IERC20Burnable-approve}.
+ */
 contract Transmuter is Context {
     using SafeMath for uint256;
     using SafeERC20 for IERC20Burnable;
@@ -16,29 +52,29 @@ contract Transmuter is Context {
     address public constant ZERO_ADDRESS = address(0);
     uint256 public TRANSMUTATION_PERIOD;
 
-    address public NToken;
+    address public AlToken;
     address public Token;
 
-    mapping(address => uint256) public depositedNTokens;//Staked nUSD
+    mapping(address => uint256) public depositedAlTokens;
     mapping(address => uint256) public tokensInBucket;
-    mapping(address => uint256) public realisedTokens;//transmutable DAI
+    mapping(address => uint256) public realisedTokens;
     mapping(address => uint256) public lastDividendPoints;
 
     mapping(address => bool) public userIsKnown;
     mapping(uint256 => address) public userList;
     uint256 public nextUser;
 
-    uint256 public totalSupplyNtokens;
+    uint256 public totalSupplyAltokens;
     uint256 public buffer;
     uint256 public lastDepositBlock;
 
-    ///@dev values needed to calculate the distribution of base asset in proportion for nTokens staked
+    ///@dev values needed to calculate the distribution of base asset in proportion for alTokens staked
     uint256 public pointMultiplier = 10e18;
 
     uint256 public totalDividendPoints;
     uint256 public unclaimedDividends;
 
-    /// @dev formation addresses whitelisted
+    /// @dev alchemist addresses whitelisted
     mapping (address => bool) public whiteList;
 
     /// @dev The address of the account which currently has administrative capabilities over this contract.
@@ -59,20 +95,18 @@ contract Transmuter is Context {
         uint256 newTransmutationPeriod
     );
 
-    constructor(address _NToken, address _Token, address _governance) public {
-        require(_NToken != ZERO_ADDRESS, "Transmuter: NToken address cannot be 0x0");
-        require(_Token != ZERO_ADDRESS, "Transmuter: Token address cannot be 0x0");
+    constructor(address _AlToken, address _Token, address _governance) public {
         require(_governance != ZERO_ADDRESS, "Transmuter: 0 gov");
         governance = _governance;
-        NToken = _NToken;
+        AlToken = _AlToken;
         Token = _Token;
         TRANSMUTATION_PERIOD = 50;
     }
 
-    ///@return displays the user's share of the pooled nTokens.
+    ///@return displays the user's share of the pooled alTokens.
     function dividendsOwing(address account) public view returns (uint256) {
         uint256 newDividendPoints = totalDividendPoints.sub(lastDividendPoints[account]);
-        return depositedNTokens[account].mul(newDividendPoints).div(pointMultiplier);
+        return depositedAlTokens[account].mul(newDividendPoints).div(pointMultiplier);
     }
 
     ///@dev modifier to fill the bucket and keep bookkeeping correct incase of increase/decrease in shares
@@ -96,7 +130,6 @@ contract Transmuter is Context {
     }
 
     ///@dev run the phased distribution of the buffered funds
-    //分階段分配緩衝資金
     modifier runPhasedDistribution() {
         uint256 _lastDepositBlock = lastDepositBlock;
         uint256 _currentBlock = block.number;
@@ -157,7 +190,6 @@ contract Transmuter is Context {
     ///
     /// sets the length (in blocks) of one full distribution phase
     function setTransmutationPeriod(uint256 newTransmutationPeriod) public onlyGov() {
-        require(newTransmutationPeriod > 0, "Transmuter: transmutation period cannot be 0");
         TRANSMUTATION_PERIOD = newTransmutationPeriod;
         emit TransmuterPeriodUpdated(TRANSMUTATION_PERIOD);
     }
@@ -169,42 +201,42 @@ contract Transmuter is Context {
         address sender = msg.sender;
         require(realisedTokens[sender] > 0);
         uint256 value = realisedTokens[sender];
-        realisedTokens[sender] = 0;//Transmutable DAI 歸0
-        IERC20Burnable(Token).safeTransfer(sender, value);//轉到我的DAI
+        realisedTokens[sender] = 0;
+        IERC20Burnable(Token).safeTransfer(sender, value);
     }
 
-    ///@dev Withdraws staked nTokens from the transmuter
+    ///@dev Withdraws staked alTokens from the transmuter
     ///
     /// This function reverts if you try to draw more tokens than you deposited
     ///
-    ///@param amount the amount of nTokens to unstake
+    ///@param amount the amount of alTokens to unstake
     function unstake(uint256 amount) public updateAccount(msg.sender) {
         // by calling this function before transmuting you forfeit your gained allocation
         address sender = msg.sender;
-        require(depositedNTokens[sender] >= amount,"Transmuter: unstake amount exceeds deposited amount");
-        depositedNTokens[sender] = depositedNTokens[sender].sub(amount);
-        totalSupplyNtokens = totalSupplyNtokens.sub(amount);
-        IERC20Burnable(NToken).safeTransfer(sender, amount);
+        require(depositedAlTokens[sender] >= amount,"Transmuter: unstake amount exceeds deposited amount");
+        depositedAlTokens[sender] = depositedAlTokens[sender].sub(amount);
+        totalSupplyAltokens = totalSupplyAltokens.sub(amount);
+        IERC20Burnable(AlToken).safeTransfer(sender, amount);
     }
-    ///@dev Deposits nTokens into the transmuter 
+    ///@dev Deposits alTokens into the transmuter 
     ///
-    ///@param amount the amount of nTokens to stake
+    ///@param amount the amount of alTokens to stake
     function stake(uint256 amount)
         public
         runPhasedDistribution()
         updateAccount(msg.sender)
         checkIfNewUser()
     {
-        // requires approval of NToken first
+        // requires approval of AlToken first
         address sender = msg.sender;
         //require tokens transferred in;
-        IERC20Burnable(NToken).safeTransferFrom(sender, address(this), amount);
-        totalSupplyNtokens = totalSupplyNtokens.add(amount);
-        depositedNTokens[sender] = depositedNTokens[sender].add(amount);
+        IERC20Burnable(AlToken).safeTransferFrom(sender, address(this), amount);
+        totalSupplyAltokens = totalSupplyAltokens.add(amount);
+        depositedAlTokens[sender] = depositedAlTokens[sender].add(amount);
     }
-    /// @dev Converts the staked nTokens to the base tokens in amount of the sum of pendingdivs and tokensInBucket
+    /// @dev Converts the staked alTokens to the base tokens in amount of the sum of pendingdivs and tokensInBucket
     ///
-    /// once the NToken has been converted, it is burned, and the base token becomes realisedTokens which can be recieved using claim()    
+    /// once the alToken has been converted, it is burned, and the base token becomes realisedTokens which can be recieved using claim()    
     ///
     /// reverts if there are no pendingdivs or tokensInBucket
     function transmute() public runPhasedDistribution() updateAccount(msg.sender) {
@@ -217,21 +249,21 @@ contract Transmuter is Context {
         tokensInBucket[sender] = 0;
 
         // check bucket overflow
-        if (pendingz > depositedNTokens[sender]) {
-            diff = pendingz.sub(depositedNTokens[sender]);
+        if (pendingz > depositedAlTokens[sender]) {
+            diff = pendingz.sub(depositedAlTokens[sender]);
 
             // remove overflow
-            pendingz = depositedNTokens[sender];
+            pendingz = depositedAlTokens[sender];
         }
 
-        // decrease ntokens
-        depositedNTokens[sender] = depositedNTokens[sender].sub(pendingz);
+        // decrease altokens
+        depositedAlTokens[sender] = depositedAlTokens[sender].sub(pendingz);
 
-        // BURN ntokens
-        IERC20Burnable(NToken).burn(pendingz);
+        // BURN ALTOKENS
+        IERC20Burnable(AlToken).burn(pendingz);
 
         // adjust total
-        totalSupplyNtokens = totalSupplyNtokens.sub(pendingz);
+        totalSupplyAltokens = totalSupplyAltokens.sub(pendingz);
 
         // reallocate overflow
         increaseAllocations(diff);
@@ -240,7 +272,7 @@ contract Transmuter is Context {
         realisedTokens[sender] = realisedTokens[sender].add(pendingz);
     }
 
-    /// @dev Executes transmute() on another account that has had more base tokens allocated to it than nTokens staked.
+    /// @dev Executes transmute() on another account that has had more base tokens allocated to it than alTokens staked.
     ///
     /// The caller of this function will have the surlus base tokens credited to their tokensInBucket balance, rewarding them for performing this action
     ///
@@ -252,14 +284,13 @@ contract Transmuter is Context {
         runPhasedDistribution()
         updateAccount(msg.sender)
         updateAccount(toTransmute)
-        checkIfNewUser()
     {
         //load into memory
         address sender = msg.sender;
         uint256 pendingz = tokensInBucket[toTransmute];
         // check restrictions
         require(
-            pendingz > depositedNTokens[toTransmute],
+            pendingz > depositedAlTokens[toTransmute],
             "Transmuter: !overflow"
         );
 
@@ -267,19 +298,19 @@ contract Transmuter is Context {
         tokensInBucket[toTransmute] = 0;
 
         // calculaate diffrence
-        uint256 diff = pendingz.sub(depositedNTokens[toTransmute]);
+        uint256 diff = pendingz.sub(depositedAlTokens[toTransmute]);
 
         // remove overflow
-        pendingz = depositedNTokens[toTransmute];
+        pendingz = depositedAlTokens[toTransmute];
 
-        // decrease ntokens
-        depositedNTokens[toTransmute] = 0;
+        // decrease altokens
+        depositedAlTokens[toTransmute] = 0;
 
-        // BURN ntokens
-        IERC20Burnable(NToken).burn(pendingz);
+        // BURN ALTOKENS
+        IERC20Burnable(AlToken).burn(pendingz);
 
         // adjust total
-        totalSupplyNtokens = totalSupplyNtokens.sub(pendingz);
+        totalSupplyAltokens = totalSupplyAltokens.sub(pendingz);
 
         // reallocate overflow
         tokensInBucket[sender] = tokensInBucket[sender].add(diff);
@@ -295,36 +326,36 @@ contract Transmuter is Context {
         }
     }
 
-    /// @dev Transmutes and unstakes all nTokens
+    /// @dev Transmutes and unstakes all alTokens
     ///
     /// This function combines the transmute and unstake functions for ease of use
     function exit() public {
         transmute();
-        uint256 toWithdraw = depositedNTokens[msg.sender];
+        uint256 toWithdraw = depositedAlTokens[msg.sender];
         unstake(toWithdraw);
     }
 
     /// @dev Transmutes and claims all converted base tokens.
     ///
-    /// This function combines the transmute and claim functions while leaving your remaining nTokens staked.
+    /// This function combines the transmute and claim functions while leaving your remaining alTokens staked.
     function transmuteAndClaim() public {
         transmute();
         claim();
     }
 
-    /// @dev Transmutes, claims base tokens, and withdraws nTokens.
+    /// @dev Transmutes, claims base tokens, and withdraws alTokens.
     ///
-    /// This function helps users to exit the transmuter contract completely after converting their nTokens to the base pair.
+    /// This function helps users to exit the transmuter contract completely after converting their alTokens to the base pair.
     function transmuteClaimAndWithdraw() public {
         transmute();
         claim();
-        uint256 toWithdraw = depositedNTokens[msg.sender];
+        uint256 toWithdraw = depositedAlTokens[msg.sender];
         unstake(toWithdraw);
     }
 
-    /// @dev Distributes the base token proportionally to all NToken stakers.
+    /// @dev Distributes the base token proportionally to all alToken stakers.
     ///
-    /// This function is meant to be called by the Formation contract for when it is sending yield to the transmuter. 
+    /// This function is meant to be called by the Alchemist contract for when it is sending yield to the transmuter. 
     /// Anyone can call this and add funds, idk why they would do that though...
     ///
     /// @param origin the account that is sending the tokens to be distributed.
@@ -334,14 +365,13 @@ contract Transmuter is Context {
         buffer = buffer.add(amount);
     }
 
-    /// @dev Allocates the incoming yield proportionally to all NToken stakers.
+    /// @dev Allocates the incoming yield proportionally to all alToken stakers.
     ///
     /// @param amount the amount of base tokens to be distributed in the transmuter.
-    //將收益按比例分配給所有 NToken 質押者,給他們transmute。
     function increaseAllocations(uint256 amount) internal {
-        if(totalSupplyNtokens > 0 && amount > 0) {
+        if(totalSupplyAltokens > 0 && amount > 0) {
             totalDividendPoints = totalDividendPoints.add(
-                amount.mul(pointMultiplier).div(totalSupplyNtokens)
+                amount.mul(pointMultiplier).div(totalSupplyAltokens)
             );
             unclaimedDividends = unclaimedDividends.add(amount);
         } else {
@@ -367,12 +397,12 @@ contract Transmuter is Context {
             uint256 realised
         )
     {
-        uint256 _depositedAl = depositedNTokens[user];
+        uint256 _depositedAl = depositedAlTokens[user];
         uint256 _toDistribute = buffer.mul(block.number.sub(lastDepositBlock)).div(TRANSMUTATION_PERIOD);
         if(block.number.sub(lastDepositBlock) > TRANSMUTATION_PERIOD){
             _toDistribute = buffer;
         }
-        uint256 _pendingdivs = _toDistribute.mul(depositedNTokens[user]).div(totalSupplyNtokens);
+        uint256 _pendingdivs = _toDistribute.mul(depositedAlTokens[user]).div(totalSupplyAltokens);
         uint256 _inbucket = tokensInBucket[user].add(dividendsOwing(user));
         uint256 _realised = realisedTokens[user];
         return (_depositedAl, _pendingdivs, _inbucket, _realised);
@@ -404,8 +434,8 @@ contract Transmuter is Context {
         }
         for (uint256 x = 0; x < delta; x += 1) {
             _theUserList[x] = userList[i];
-            _theUserData[y] = depositedNTokens[userList[i]];
-            _theUserData[y + 1] = dividendsOwing(userList[i]).add(tokensInBucket[userList[i]]).add(_toDistribute.mul(depositedNTokens[userList[i]]).div(totalSupplyNtokens));
+            _theUserData[y] = depositedAlTokens[userList[i]];
+            _theUserData[y + 1] = dividendsOwing(userList[i]).add(tokensInBucket[userList[i]]).add(_toDistribute.mul(depositedAlTokens[userList[i]]).div(totalSupplyAltokens));
             y += 2;
             i += 1;
         }
@@ -446,10 +476,10 @@ contract Transmuter is Context {
     /// This function reverts if the caller is not the new pending governance.
     function acceptGovernance() external  {
         require(msg.sender == pendingGovernance,"!pendingGovernance");
+        address _pendingGovernance = pendingGovernance;
+        governance = _pendingGovernance;
 
-        governance = pendingGovernance;
-
-        emit GovernanceUpdated(pendingGovernance);
+        emit GovernanceUpdated(_pendingGovernance);
     }
 
     /// This function reverts if the caller is not governance
