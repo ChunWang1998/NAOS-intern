@@ -629,7 +629,7 @@ contract TransmuterB is Context {
 
 
     /// @dev Recalls funds from active vault if less than amt exist locally
-    ///如果本地存在的資金少於 amt，則從vault中召回資金
+    ///如果transmuter的資金少於 amt，則從vault中召回資金(不然不夠轉)
     /// @param amt amount of funds that need to exist locally to fulfill pending request
     function ensureSufficientFundsExistLocally(uint256 amt) internal {
         uint256 currentBal = IERC20Burnable(token).balanceOf(address(this));
@@ -687,6 +687,7 @@ contract TransmuterB is Context {
     ///
     /// This function plants excess funds in an external vault, or recalls them from the external vault
     /// Should only be called as part of distribute()
+    //將多餘資金存入外部vault，或從外部vault中召回
     function _plantOrRecallExcessFunds() internal {
         // check if the transmuter holds more funds than plantableThreshold
         uint256 bal = IERC20Burnable(token).balanceOf(address(this));
@@ -707,7 +708,7 @@ contract TransmuterB is Context {
     /// @dev Recalls up to the harvestAmt from the active vault
     ///
     /// This function will recall less than harvestAmt if only less is available
-    ///
+    ///從vault召回資金
     /// @param _recallAmt the amount to harvest from the active vault
     function _recallExcessFundsFromActiveVault(uint256 _recallAmt) internal {
         VaultWithIndirection.Data storage _activeVault = _vaults.last();
