@@ -70,6 +70,7 @@ contract Transmuter is Context {
     }
 
     ///@return displays the user's share of the pooled nTokens.
+    //dividend :股利
     function dividendsOwing(address account) public view returns (uint256) {
         uint256 newDividendPoints = totalDividendPoints.sub(lastDividendPoints[account]);
         return depositedNTokens[account].mul(newDividendPoints).div(pointMultiplier);
