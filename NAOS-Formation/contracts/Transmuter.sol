@@ -20,7 +20,7 @@ contract Transmuter is Context {
     address public Token;
 
     mapping(address => uint256) public depositedNTokens;//Staked nUSD
-    mapping(address => uint256) public tokensInBucket;
+    mapping(address => uint256) public tokensInBucket;//根據staked nUSD慢慢累積的值,會送到transmutable DAI,會在updateAccount更新,根據進來的時間分配不同
     mapping(address => uint256) public realisedTokens;//transmutable DAI
     mapping(address => uint256) public lastDividendPoints;
 
@@ -77,6 +77,7 @@ contract Transmuter is Context {
     }
 
     ///@dev modifier to fill the bucket and keep bookkeeping correct incase of increase/decrease in shares
+    //update tokensInBucket
     modifier updateAccount(address account) {
         uint256 owing = dividendsOwing(account);
         if (owing > 0) {
@@ -164,7 +165,7 @@ contract Transmuter is Context {
     }
 
     ///@dev claims the base token after it has been transmuted
-    ///
+    ///transmutable DAI -> my DAI
     ///This function reverts if there is no realisedToken balance
     function claim() public {
         address sender = msg.sender;
@@ -257,7 +258,7 @@ contract Transmuter is Context {
     {
         //load into memory
         address sender = msg.sender;
-        uint256 pendingz = tokensInBucket[toTransmute];
+        uint256 pendingz = tokensInBucket[toTransmute];//tokensInBucket: when updateaccount
         // check restrictions
         require(
             pendingz > depositedNTokens[toTransmute],
@@ -338,7 +339,7 @@ contract Transmuter is Context {
     /// @dev Allocates the incoming yield proportionally to all NToken stakers.
     ///
     /// @param amount the amount of base tokens to be distributed in the transmuter.
-    //將收益按比例分配給所有 NToken 質押者,給他們transmute。
+    //將收益按比例分配給所有 NUSD Token 質押者,給他們transmute。
     function increaseAllocations(uint256 amount) internal {
         if(totalSupplyNtokens > 0 && amount > 0) {
             totalDividendPoints = totalDividendPoints.add(
